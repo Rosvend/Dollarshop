@@ -111,9 +111,35 @@ All concrete implementations are instantiated exclusively in `Program.cs` (the c
 
 The legacy code had direct class-to-class coupling: `Producto` called `Carrito.AgregarProductoAlCarrito()`, `Factura` called `Carrito.CalcularTotal()`, `Ofertas` accessed `Producto.ListaProductos` directly.
 
-## UML Diagram
+## Before & After: Applying SOLID Principles
 
-The full class diagram is available in [`docs/architecture.md`](docs/architecture.md) as a Mermaid diagram that renders directly on GitHub.
+### Before — Legacy Architecture
+
+The original codebase was a monolithic console application where every class depended directly on every other class through static methods and global state. There were no interfaces, no separation of concerns, and no way to extend or test the system in isolation.
+
+![Legacy UML Diagram](docs/Legacy_Dollarshop_UML.jpg)
+
+**Key problems visible in the diagram:**
+- `Program` depends directly on every concrete class.
+- `Producto` handles data storage, cart operations, and console I/O.
+- `Carrito de compras` is tightly coupled to `Pagar` and `Factura` through composition arrows with no abstraction layer.
+- `Oferta` mutates `Producto` prices directly.
+- All relationships are concrete class-to-class dependencies — nothing is substitutable.
+
+### After — SOLID-Compliant Architecture
+
+The refactored architecture separates the system into four distinct layers. Every dependency flows downward through interfaces, making each component independently replaceable and testable.
+
+![SOLID UML Diagram](docs/SOLID-Dollarshop-UML.jpg)
+
+**Key improvements visible in the diagram:**
+- **Presentation Layer** (purple): `ConsoleUI` depends only on interfaces, never on concrete services.
+- **Abstractions Layer** (blue): 8 focused interfaces define the contracts between layers.
+- **Business Logic Layer** (green): Concrete implementations like `ShoppingCart`, `CardPayment`, and `PercentageDiscount` implement their respective interfaces and can be extended via the Strategy pattern (OCP).
+- **Domain Models** (yellow): Pure data classes with no dependencies on any other layer.
+- All arrows point toward abstractions, not concretions (DIP).
+
+The detailed Mermaid class diagram is also available in [`docs/architecture.md`](docs/architecture.md) and renders directly on GitHub.
 
 ## Running the Project
 
