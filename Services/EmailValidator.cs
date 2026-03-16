@@ -1,15 +1,8 @@
-using System.Text.RegularExpressions;
-using TiendaOnline.Abstractions;
-
 namespace TiendaOnline.Services
 {
-    public class EmailValidator : IValidator<string>
+    public class EmailValidator : RegexValidator
     {
-        public string ErrorMessage => "El email debe tener un formato valido (ejemplo@dominio.com).";
-
-        public bool IsValid(string value)
-        {
-            return !string.IsNullOrWhiteSpace(value) && Regex.IsMatch(value, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-        }
+        public override string ErrorMessage => "El email debe tener un formato valido (ejemplo@dominio.com).";
+        protected override string Pattern => @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
     }
 }

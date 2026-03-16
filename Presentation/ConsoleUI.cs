@@ -1,6 +1,5 @@
 using TiendaOnline.Abstractions;
 using TiendaOnline.Domain;
-using TiendaOnline.Services;
 
 namespace TiendaOnline.Presentation
 {
@@ -10,8 +9,7 @@ namespace TiendaOnline.Presentation
         private readonly IUserRepository _userRepo;
         private readonly IProductRepository _productRepo;
         private readonly ICart _cart;
-        private readonly PaymentService _paymentService;
-        private readonly IInvoiceService _invoiceService;
+        private readonly ICheckoutService _checkoutService;
         private readonly IValidator<string> _nameValidator;
         private readonly IValidator<string> _emailValidator;
         private readonly IValidator<string> _phoneValidator;
@@ -21,8 +19,7 @@ namespace TiendaOnline.Presentation
             IUserRepository userRepo,
             IProductRepository productRepo,
             ICart cart,
-            PaymentService paymentService,
-            IInvoiceService invoiceService,
+            ICheckoutService checkoutService,
             IValidator<string> nameValidator,
             IValidator<string> emailValidator,
             IValidator<string> phoneValidator)
@@ -31,8 +28,7 @@ namespace TiendaOnline.Presentation
             _userRepo = userRepo;
             _productRepo = productRepo;
             _cart = cart;
-            _paymentService = paymentService;
-            _invoiceService = invoiceService;
+            _checkoutService = checkoutService;
             _nameValidator = nameValidator;
             _emailValidator = emailValidator;
             _phoneValidator = phoneValidator;
@@ -374,7 +370,7 @@ namespace TiendaOnline.Presentation
 
             Console.WriteLine("-----PAGAR-----\n");
 
-            var methods = _paymentService.GetAvailableMethods();
+            var methods = _checkoutService.GetAvailablePaymentMethods();
             string selectedMethod = ReadPaymentMethod(methods);
 
             string accountNumber = string.Empty;
@@ -395,22 +391,24 @@ namespace TiendaOnline.Presentation
                 return;
             }
 
+            int customerNumber = ReadCustomerNumber();
+
             var paymentInfo = new PaymentInfo
             {
                 Method = selectedMethod,
                 AccountNumber = accountNumber
             };
 
-            bool success = _paymentService.Process(selectedMethod, total, paymentInfo);
+            var result = _checkoutService.Process(_cart, paymentInfo, customerNumber);
 
-            if (!success)
+            if (!result.Success)
             {
                 Console.WriteLine("\nPago rechazado. Verifique sus datos.\n");
                 return;
             }
 
             Console.WriteLine("\nPago ACEPTADO.\n");
-            HandleInvoice(selectedMethod);
+            HandleInvoice(result.Invoice!);
         }
 
         private string ReadPaymentMethod(List<string> methods)
@@ -447,23 +445,9 @@ namespace TiendaOnline.Presentation
             }
         }
 
-        private void HandleInvoice(string paymentMethod)
+        private void HandleInvoice(Invoice invoice)
         {
             Console.WriteLine("-----FACTURA-----\n");
-            Console.WriteLine("1.Generar recibo");
-            Console.WriteLine("0.Volver\n");
-            Console.Write("Elija una opcion: ");
-
-            if (!int.TryParse(Console.ReadLine(), out int opcion) || opcion != 1)
-            {
-                return;
-            }
-
-            int customerNumber = ReadCustomerNumber();
-
-            var invoice = _invoiceService.Generate(_cart, customerNumber, paymentMethod);
-
-            Console.WriteLine();
             Console.WriteLine($"Identificacion: {invoice.CustomerNumber}");
             Console.WriteLine($"Total a pagar: {invoice.Total:C}");
             Console.WriteLine($"Fecha: {invoice.Date:dd-MM-yy}");

@@ -1,15 +1,8 @@
-using System.Text.RegularExpressions;
-using TiendaOnline.Abstractions;
-
 namespace TiendaOnline.Services
 {
-    public class NameValidator : IValidator<string>
+    public class NameValidator : RegexValidator
     {
-        public string ErrorMessage => "El nombre solo debe contener letras.";
-
-        public bool IsValid(string value)
-        {
-            return !string.IsNullOrWhiteSpace(value) && Regex.IsMatch(value, "^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$");
-        }
+        public override string ErrorMessage => "El nombre solo debe contener letras.";
+        protected override string Pattern => "^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$";
     }
 }

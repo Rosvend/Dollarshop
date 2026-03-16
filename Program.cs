@@ -32,7 +32,12 @@ productRepo.Seed(new List<Product>
 
 // Services
 IAuthenticationService authService = new AuthenticationService(userRepo);
-ICart cart = new ShoppingCart();
+var discount = new CompositeDiscount(new IDiscountStrategy[]
+{
+    new PercentageDiscount(10),
+    new FixedAmountDiscount(5)
+});
+ICart cart = new ShoppingCart(discount);
 IInvoiceService invoiceService = new InvoiceService();
 
 // Payment strategies (OCP: add new methods here without modifying existing code)
@@ -48,14 +53,16 @@ IValidator<string> nameValidator = new NameValidator();
 IValidator<string> emailValidator = new EmailValidator();
 IValidator<string> phoneValidator = new PhoneValidator();
 
+// Facade: CheckoutService wraps payment + invoice orchestration
+ICheckoutService checkoutService = new CheckoutService(paymentService, invoiceService);
+
 // --- Launch the application ---
 var ui = new ConsoleUI(
     authService,
     userRepo,
     productRepo,
     cart,
-    paymentService,
-    invoiceService,
+    checkoutService,
     nameValidator,
     emailValidator,
     phoneValidator
