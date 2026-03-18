@@ -194,23 +194,11 @@ The detailed Mermaid class diagram is also available in [`docs/architecture.md`]
 ### Build and Run
 
 ```bash
-git clone <repository-url>
+git clone https:github.com/rosvend/Dollarshop.git
 cd Dollarshop
 dotnet build
 dotnet run
 ```
-
-### Default Credentials
-
-- **Username:** `samuel`
-- **Password:** `123`
-
-### Walkthrough
-
-1. **Login** — Enter the default credentials (or register a new account).
-2. **Browse** — View the product catalog with prices and stock.
-3. **Add to cart** — Select products and quantities to add to your shopping cart.
-4. **Checkout** — Choose a payment method and complete the purchase. An invoice is generated automatically.
 
 ## Tech Stack
 
