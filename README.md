@@ -194,7 +194,7 @@ The detailed Mermaid class diagram is also available in [`docs/architecture.md`]
 ### Build and Run
 
 ```bash
-git clone https:github.com/rosvend/Dollarshop.git
+git clone https://github.com/Rosvend/Dollarshop.git
 cd Dollarshop
 dotnet build
 dotnet run
