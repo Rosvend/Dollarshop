@@ -14,6 +14,7 @@ Dollarshop/
 ├── Abstractions/       ← Interfaces (contracts between layers)
 ├── Services/           ← Business logic implementations
 ├── Domain/             ← Pure data models (POCOs)
+│   └── Builders/       ← Builder pattern implementations
 ├── Program.cs          ← Composition root (dependency wiring)
 └── docs/               ← UML diagrams and documentation
 ```
@@ -24,7 +25,7 @@ Dollarshop/
 
 ### Abstractions Layer
 
-Seven focused interfaces define the contracts between layers:
+Twelve focused interfaces define the contracts between layers:
 
 | Interface | Responsibility |
 |---|---|
@@ -33,30 +34,73 @@ Seven focused interfaces define the contracts between layers:
 | `IProductRepository` | Query and update product catalog and stock |
 | `ICart` | Add/remove items and calculate totals |
 | `IPaymentMethod` | Process a payment (one implementation per method) |
+| `IPaymentService` | Orchestrate a collection of payment methods |
 | `IDiscountStrategy` | Apply a discount to a price |
 | `IInvoiceService` | Generate invoices from cart contents |
+| `ICheckoutService` | Coordinate payment and invoice generation in a single operation |
+| `IBuilder<T>` | Generic builder contract (fluent `Build()` method) |
+| `IInvoiceBuilder` | Fluent builder for constructing `Invoice` objects with validation |
 | `IValidator<T>` | Validate a single value and provide an error message |
 
 ### Business Logic Layer
 
 Concrete implementations that depend only on abstractions:
 
-- **`AuthenticationService`** - verifies credentials against `IUserRepository`
-- **`InMemoryUserRepository`** / **`InMemoryProductRepository`** - in-memory data stores, replaceable with database implementations
-- **`ShoppingCart`** - manages cart items with optional `IDiscountStrategy`
-- **`PaymentService`** - orchestrates a collection of `IPaymentMethod` strategies
-- **`CardPayment`**, **`CashPayment`**, **`AccountPayment`** - individual payment strategies
-- **`PercentageDiscount`**, **`FixedAmountDiscount`** - individual discount strategies
-- **`InvoiceService`** - generates invoices from cart state
-- **`NameValidator`**, **`EmailValidator`**, **`PhoneValidator`** - input validators
+- **`AuthenticationService`** — verifies credentials against `IUserRepository`
+- **`InMemoryUserRepository`** / **`InMemoryProductRepository`** — in-memory data stores, replaceable with database implementations
+- **`ShoppingCart`** — manages cart items with optional `IDiscountStrategy`
+- **`PaymentService`** — orchestrates a collection of `IPaymentMethod` strategies
+- **`CardPayment`**, **`CashPayment`**, **`AccountPayment`** — individual payment strategies
+- **`PercentageDiscount`**, **`FixedAmountDiscount`** — individual discount strategies
+- **`CompositeDiscount`** — combines multiple `IDiscountStrategy` instances into one (Composite pattern)
+- **`InvoiceService`** — generates invoices using `IInvoiceBuilder` (Builder pattern)
+- **`CheckoutService`** — coordinates `IPaymentService` and `IInvoiceService` behind a simple interface (Facade pattern)
+- **`RegexValidator`** — abstract base class for regex-based validation (Template Method pattern)
+- **`NameValidator`**, **`EmailValidator`**, **`PhoneValidator`** — concrete validators that define their own regex patterns
 
 ### Domain Layer
 
-Pure C# classes with no logic or dependencies: `User`, `Product`, `CartItem`, `Invoice`, `PaymentInfo`, `RegistrationData`.
+Pure C# classes with no logic or dependencies: `User`, `Product`, `CartItem`, `Invoice`, `PaymentInfo`, `RegistrationData`, `CheckoutResult`.
+
+The `Domain/Builders/` subdirectory contains `InvoiceBuilder`, the fluent builder implementation for constructing validated `Invoice` objects.
 
 ### Composition Root
 
 `Program.cs` is the only place where concrete classes are instantiated. It wires all dependencies together and passes them into `ConsoleUI`, which runs the application.
+
+## Design Patterns
+
+The project applies five classic design patterns:
+
+### Strategy
+
+**Interfaces / Classes:** `IDiscountStrategy` → `PercentageDiscount`, `FixedAmountDiscount`; `IPaymentMethod` → `CardPayment`, `CashPayment`, `AccountPayment`
+
+Pluggable algorithms for discounts and payments. Adding a new payment method or discount type means creating a new class that implements the corresponding interface — no existing code is modified (OCP).
+
+### Builder
+
+**Interfaces / Classes:** `IBuilder<T>` → `IInvoiceBuilder` → `InvoiceBuilder`
+
+Fluent invoice construction with validation. `InvoiceBuilder` exposes methods like `SetCustomerName()`, `AddItems()`, and `SetPaymentMethod()` that can be chained, with `Build()` producing a validated `Invoice`. `InvoiceService` delegates construction to the builder.
+
+### Composite
+
+**Classes:** `CompositeDiscount` (implements `IDiscountStrategy`, wraps a list of strategies)
+
+Allows combining multiple discount strategies into one. Because `CompositeDiscount` itself implements `IDiscountStrategy`, callers treat it identically to a single discount — the composition is transparent.
+
+### Facade
+
+**Interfaces / Classes:** `ICheckoutService` → `CheckoutService`
+
+Simplifies the checkout process by coordinating `IPaymentService` and `IInvoiceService` behind a single `Checkout()` method. Callers don't need to know about the individual steps involved.
+
+### Template Method
+
+**Classes:** `RegexValidator` (abstract) → `NameValidator`, `EmailValidator`, `PhoneValidator`
+
+`RegexValidator` defines the validation algorithm (`IsValid` applies a regex), while subclasses supply the specific pattern and error message. Adding a new validator means overriding two properties — no logic is duplicated.
 
 ## SOLID Principles
 
@@ -134,7 +178,7 @@ The refactored architecture separates the system into four distinct layers. Ever
 
 **Key improvements visible in the diagram:**
 - **Presentation Layer** (purple): `ConsoleUI` depends only on interfaces, never on concrete services.
-- **Abstractions Layer** (blue): 8 focused interfaces define the contracts between layers.
+- **Abstractions Layer** (blue): 12 focused interfaces define the contracts between layers.
 - **Business Logic Layer** (green): Concrete implementations like `ShoppingCart`, `CardPayment`, and `PercentageDiscount` implement their respective interfaces and can be extended via the Strategy pattern (OCP).
 - **Domain Models** (yellow): Pure data classes with no dependencies on any other layer.
 - All arrows point toward abstractions, not concretions (DIP).
@@ -143,12 +187,30 @@ The detailed Mermaid class diagram is also available in [`docs/architecture.md`]
 
 ## Running the Project
 
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+
+### Build and Run
+
 ```bash
+git clone <repository-url>
+cd Dollarshop
 dotnet build
 dotnet run
 ```
 
-Default credentials: `samuel` / `123`
+### Default Credentials
+
+- **Username:** `samuel`
+- **Password:** `123`
+
+### Walkthrough
+
+1. **Login** — Enter the default credentials (or register a new account).
+2. **Browse** — View the product catalog with prices and stock.
+3. **Add to cart** — Select products and quantities to add to your shopping cart.
+4. **Checkout** — Choose a payment method and complete the purchase. An invoice is generated automatically.
 
 ## Tech Stack
 
