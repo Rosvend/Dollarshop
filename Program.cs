@@ -1,5 +1,6 @@
 using TiendaOnline.Abstractions;
 using TiendaOnline.Domain;
+using TiendaOnline.Domain.Builders;
 using TiendaOnline.Presentation;
 using TiendaOnline.Services;
 
@@ -38,7 +39,10 @@ var discount = new CompositeDiscount(new IDiscountStrategy[]
     new FixedAmountDiscount(5)
 });
 ICart cart = new ShoppingCart(discount);
-IInvoiceService invoiceService = new InvoiceService();
+
+// Invoice Builder + Service (Builder Pattern with Dependency Injection)
+IInvoiceBuilder invoiceBuilder = new InvoiceBuilder();
+IInvoiceService invoiceService = new InvoiceService(invoiceBuilder);
 
 // Payment strategies (OCP: add new methods here without modifying existing code)
 var paymentService = new PaymentService(new IPaymentMethod[]

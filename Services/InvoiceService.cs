@@ -6,21 +6,24 @@ namespace TiendaOnline.Services
     public class InvoiceService : IInvoiceService
     {
         private int _nextId = 1;
+        private readonly IInvoiceBuilder _builder;
+
+        public InvoiceService(IInvoiceBuilder builder)
+        {
+            _builder = builder;
+        }
 
         public Invoice Generate(ICart cart, int customerNumber, string paymentMethod)
         {
-            var items = cart.GetItems();
-            var total = cart.CalculateTotal();
-
-            return new Invoice
-            {
-                Id = _nextId++,
-                CustomerNumber = customerNumber,
-                Items = items,
-                Total = total,
-                Date = DateTime.Now,
-                PaymentMethod = paymentMethod
-            };
+            // El servicio orquesta la secuencia de construcción (actúa como Director)
+            return _builder
+                .WithId(_nextId++)
+                .WithCustomerNumber(customerNumber)
+                .WithItems(cart.GetItems())
+                .WithTotal(cart.CalculateTotal())
+                .WithDate(DateTime.Now)
+                .WithPaymentMethod(paymentMethod)
+                .Build();
         }
     }
 }
