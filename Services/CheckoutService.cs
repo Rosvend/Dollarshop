@@ -5,10 +5,10 @@ namespace TiendaOnline.Services
 {
     public class CheckoutService : ICheckoutService
     {
-        private readonly PaymentService _paymentService;
+        private readonly IPaymentService _paymentService;
         private readonly IInvoiceService _invoiceService;
 
-        public CheckoutService(PaymentService paymentService, IInvoiceService invoiceService)
+        public CheckoutService(IPaymentService paymentService, IInvoiceService invoiceService)
         {
             _paymentService = paymentService;
             _invoiceService = invoiceService;

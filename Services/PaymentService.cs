@@ -3,7 +3,7 @@ using TiendaOnline.Domain;
 
 namespace TiendaOnline.Services
 {
-    public class PaymentService
+    public class PaymentService : IPaymentService
     {
         private readonly List<IPaymentMethod> _methods;
 

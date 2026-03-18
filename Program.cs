@@ -40,12 +40,12 @@ var discount = new CompositeDiscount(new IDiscountStrategy[]
 });
 ICart cart = new ShoppingCart(discount);
 
-// Invoice Builder + Service (Builder Pattern with Dependency Injection)
-IInvoiceBuilder invoiceBuilder = new InvoiceBuilder();
-IInvoiceService invoiceService = new InvoiceService(invoiceBuilder);
+// Invoice Builder Factory + Service (Builder Pattern with Dependency Injection)
+Func<IInvoiceBuilder> invoiceBuilderFactory = () => new InvoiceBuilder();
+IInvoiceService invoiceService = new InvoiceService(invoiceBuilderFactory);
 
 // Payment strategies (OCP: add new methods here without modifying existing code)
-var paymentService = new PaymentService(new IPaymentMethod[]
+IPaymentService paymentService = new PaymentService(new IPaymentMethod[]
 {
     new CardPayment(),
     new CashPayment(),
