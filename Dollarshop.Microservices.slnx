@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/sales-service/">
+    <Project Path="src/sales-service/Sales.Api/Sales.Api.csproj" />
     <Project Path="src/sales-service/Sales.Application/Sales.Application.csproj" />
     <Project Path="src/sales-service/Sales.Domain/Sales.Domain.csproj" />
     <Project Path="src/sales-service/Sales.Infrastructure/Sales.Infrastructure.csproj" />

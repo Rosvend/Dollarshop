@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Sales.Api — External layer of the sales-service (Microservices §6.1).
+    An ASP.NET Core Web API of thin controllers: they map HTTP requests to
+    Application Commands/Queries, dispatch them through MediatR and return
+    status codes. No business logic, no transaction management here.
+    It references Application (for the use cases) and Infrastructure (to wire
+    the adapters); Sales.Domain is reached only transitively.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sales.Api</RootNamespace>
+    <AssemblyName>Sales.Api</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sales.Application\Sales.Application.csproj" />
+    <ProjectReference Include="..\Sales.Infrastructure\Sales.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+  </ItemGroup>
+
+</Project>
