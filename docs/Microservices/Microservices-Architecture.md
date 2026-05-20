@@ -352,11 +352,26 @@ Cada microservicio es, internamente, una **arquitectura en capas** que respeta l
 | Capa | Contenido | Reglas (rúbrica) |
 | :--- | :--- | :--- |
 | **Dominio** | Entidades ricas, Value Objects inmutables, Agregados con raíz única, Domain Events, interfaces de dominio | Las entidades implementan comportamiento; los VOs validan en el constructor y lanzan excepciones; la raíz del agregado es el único punto de acceso; los eventos se nombran en pasado. **No depende de ninguna otra capa.** |
-| **Aplicación** | Use cases (un caso = una acción de negocio), orquestación, manejo transaccional | Orquesta servicios de dominio; **no contiene lógica de negocio**; garantiza la consistencia de la operación completa. |
+| **Aplicación** | Commands y Queries (CQRS) con sus handlers vía MediatR, DTOs de resultado de queries, behaviors del pipeline | Cada Command/Query es **una única acción de negocio**; el handler orquesta servicios de dominio y **no contiene lógica de negocio**; garantiza la consistencia de la operación completa. |
 | **Infraestructura** | Repositorios (implementan interfaces de dominio), ORM, caché, ACL, Outbox relay, clientes REST | El ORM vive **solo aquí**; los repositorios retornan entidades/agregados y no exponen SQL ni tecnología; la caché se implementa en esta capa. |
-| **Externa** | Controllers delgados, DTOs de entrada/salida | Los controllers implementan los casos de uso y manejan commits/rollbacks; los DTOs mapean explícitamente hacia/desde el dominio; la validación de entrada ocurre en el boundary. |
+| **Externa** | Controllers delgados, contratos HTTP de entrada/salida | El controller solo mapea el request a un Command/Query y lo envía por el mediador; los contratos HTTP se mapean explícitamente hacia/desde los Commands; la validación de forma ocurre en el boundary. |
 
-### 6.2 Estructura de carpetas — ejemplo `sales-service`
+### 6.2 La capa de Aplicación: CQRS-lite con MediatR
+
+La capa de Aplicación se implementa con **CQRS-lite** (separación de Commands y Queries, sobre la misma base de datos) y el mediador **MediatR**. Esta decisión —idiomática en el ecosistema .NET— refuerza tres exigencias de la rúbrica:
+
+- **Un use case = una acción:** cada `Command` o `Query` representa exactamente una acción de negocio, y su `Handler` es su única implementación. El mapeo es 1-a-1, sin clases genéricas ambiguas.
+- **Controllers delgados:** el controller no orquesta nada; solo traduce el request HTTP a un Command/Query y llama `_mediator.Send(...)`. Toda la coordinación vive en el handler.
+- **Transacciones y validación bien manejadas:** se resuelven como **behaviors del pipeline de MediatR** (`ValidationBehavior`, `TransactionBehavior`) que envuelven a todos los handlers de forma transversal, sin repetir código.
+
+**Precisión sobre los DTOs (dos tipos distintos):**
+
+- Los **Commands, Queries y sus modelos de resultado** son contratos de la capa de **Aplicación** y viven en ella (`Application/Commands`, `Application/Queries`, `Application/Dtos`).
+- Los **contratos HTTP de entrada/salida** (request/response, moldeados por el transporte) viven en la capa **Externa** (`External/Contracts`), donde la rúbrica ubica los "DTOs para entrada/salida". El controller los mapea explícitamente a un Command.
+
+Así se honra a la vez la recomendación de orientar la estructura a CQRS y la ubicación de los DTOs de borde que pide la rúbrica escrita.
+
+### 6.3 Estructura de carpetas — ejemplo `sales-service`
 
 Esta estructura eleva a nivel de microservicio la proyección por dominio que el DDD ya planteó en su §7.3. Responde directamente al feedback del profesor sobre el "ensamblado desordenado": **se organiza por capa funcional, sin mezclar responsabilidades bajo un `Domain/` genérico.**
 
@@ -368,20 +383,24 @@ sales-service/
 │   ├── Events/            CarritoItemAgregado, CheckoutIniciado, VentaCerrada, ...
 │   └── Interfaces/        ICartRepository, IEventPublisher
 ├── Application/
-│   └── UseCases/          AddItemUseCase, ApplyDiscountUseCase, CheckoutUseCase
+│   ├── Commands/          AddItemCommand + Handler, ApplyDiscountCommand + Handler,
+│   │                      CheckoutCommand + Handler  (orquesta la Saga, §3.3)
+│   ├── Queries/           GetCartQuery + Handler
+│   ├── Dtos/              CartDto, CartItemDto       (resultados de queries)
+│   └── Behaviors/         ValidationBehavior, TransactionBehavior  (pipeline MediatR)
 ├── Infrastructure/
 │   ├── Persistence/       CartRepository (EF Core), DbContext, Outbox
 │   ├── Cache/             ProductSnapshotCache
 │   ├── Acl/               FinanceAclMapper        ◄── ACL (§5)
 │   └── Messaging/         RabbitMqEventPublisher, OutboxRelay
 └── External/
-    ├── Controllers/       CartController
-    └── Dtos/              AddItemDto, CheckoutDto, CartResponseDto
+    ├── Controllers/       CartController            (delgado: request → Command → mediador)
+    └── Contracts/         AddItemRequest, CheckoutRequest, CartResponse  (DTOs HTTP)
 ```
 
-Los otros tres servicios (`identity-service`, `catalog-service`, `finance-service`) siguen la **misma plantilla de cuatro capas**, con sus propios agregados y use cases. `identity-service` y `catalog-service` no tienen carpeta `Acl/`; `finance-service` no tiene controllers expuestos al Gateway (§4.1).
+Los otros tres servicios (`identity-service`, `catalog-service`, `finance-service`) siguen la **misma plantilla de cuatro capas** con CQRS, con sus propios Commands y Queries. `identity-service` y `catalog-service` no tienen carpeta `Acl/`; `finance-service` no tiene controllers expuestos al Gateway (§4.1).
 
-### 6.3 Trazabilidad rúbrica de implementación → topología
+### 6.4 Trazabilidad rúbrica de implementación → topología
 
 | Elemento de la rúbrica | Dónde vive |
 | :--- | :--- |
@@ -390,12 +409,13 @@ Los otros tres servicios (`identity-service`, `catalog-service`, `finance-servic
 | Agregados con raíz única | `Domain/Aggregates/` (raíz: `ShoppingCart`) |
 | Domain Events | `Domain/Events/` |
 | Interfaces de dominio | `Domain/Interfaces/` |
-| Use cases de una sola acción | `Application/UseCases/` |
+| Use cases de una sola acción | `Application/Commands/` y `Application/Queries/` (un Command/Query = una acción) |
+| Orquestación y transacciones bien manejadas | Handlers de MediatR + `Application/Behaviors/TransactionBehavior` |
 | Repositorios (implementan interfaces de dominio) | `Infrastructure/Persistence/` |
 | ORM | `Infrastructure/Persistence/` (EF Core, solo aquí) |
 | Caché | `Infrastructure/Cache/` |
-| Controllers delgados | `External/Controllers/` |
-| DTOs entrada/salida con validación en boundary | `External/Dtos/` |
+| Controllers delgados | `External/Controllers/` (request → Command → mediador) |
+| DTOs entrada/salida con validación en boundary | `External/Contracts/` (HTTP); validación vía `ValidationBehavior` |
 
 ---
 
