@@ -16,7 +16,6 @@
 5. Lenguaje Ubicuo — glosario
 6. Dominio seleccionado: Ventas / Carrito — detalle táctico
 7. Protección del modelo núcleo y proyección al ensamblado
-8. Trazabilidad: rúbrica → sección
 
 ---
 
@@ -493,16 +492,3 @@ src/
 Cada BC es **autónomo**: tiene su propio dominio, su propia aplicación y su propia infraestructura. Esta proyección hace ejecutable el diseño y deja a la entrega de implementación con un mapa claro de dónde va cada archivo del repo actual.
 
 ---
-
-## 8. Trazabilidad: rúbrica → sección
-
-| # | Criterio de la rúbrica (Documento Diseño DDD, 15 pts) | Sección que lo cubre |
-|---|---|---|
-| 1 | Gráfica con flujo de la estructura organizacional agrupados por afinidad, que permita ver los posibles dominios del problema | §2 (especialmente §2.2 y §2.3) |
-| 2 | Gráficos con Dominios y dentro de ellos entidades y agregados | §3 (diagramas en §3.1, §3.2, §3.3, §3.4) |
-| 3 | Gráfico Bounded Context donde se vea el flujo de entidades, agregados, servicios que se ofrecen y APIs que consume | §4 (diagrama §4.1, tabla §4.2, justificación §4.3) |
-| 4 | Lenguaje Ubicuo presentado en un glosario de términos de negocio | §5 |
-| 5 | Objetos de Valor del dominio seleccionado | §6.2 |
-| 6 | Triggers y Eventos del dominio seleccionado | §6.3 |
-| 7 | Definir Servicios del dominio seleccionado | §6.4 |
-| (Nota de la rúbrica) "Pintar el dominio seleccionado de otro color en los gráficos" | El BC Ventas / Carrito está resaltado en naranja en **todos** los diagramas (§2.2, §3.3, §4.1, §6.1, §7.1) |
