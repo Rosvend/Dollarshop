@@ -1,10 +1,14 @@
 # Dollarshop — runnable demo of the 4-microservice topology (Microservices §7.1).
 #
-# Boots: PostgreSQL + RabbitMQ + a one-shot DB migrator + the 4 microservices.
+# Boots: PostgreSQL + RabbitMQ + 3 one-shot DB migrators + the 4 microservices.
 # All services join the default project network and reach each other by service
 # name (e.g. `http://catalog-service:8080`, `amqp://rabbitmq:5672`).
 #
 #   docker compose up --build
+#
+# Database-per-Service (§2.3): a single PostgreSQL container hosts three logical
+# databases — sales_db, catalog_db, identity_db — created by the init script in
+# infra/postgres/init on first boot.
 #
 # Host ports follow the architecture doc: identity 5001, catalog 5002, sales 5003.
 # finance-service is intentionally not exposed (§4.1): internal traffic only.
@@ -22,6 +26,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # First-boot only: create the catalog_db and identity_db logical databases
+      # so every service owns one (Database-per-Service, §2.3).
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sales -d sales_db"]
       interval: 5s
@@ -40,8 +47,10 @@ services:
       timeout: 10s
       retries: 20
 
-  # One-shot job: emits an idempotent SQL script from the InitialCreate migration
-  # and applies it to postgres. Exits 0 on success; sales-service waits for it.
+  # ---- one-shot DB migrators ------------------------------------------------
+  # Each emits an idempotent SQL script from its service's EF migrations and
+  # applies it to PostgreSQL. They exit 0 on success; the API service waits.
+
   sales-migrator:
     build:
       context: .
@@ -53,6 +62,32 @@ services:
       postgres:
         condition: service_healthy
     restart: "no"
+
+  catalog-migrator:
+    build:
+      context: .
+      dockerfile: src/catalog-service/Catalog.Migrator.Dockerfile
+    container_name: dollarshop-catalog-migrator
+    environment:
+      CATALOG_DB_CONNECTION: "postgresql://sales:sales@postgres:5432/catalog_db"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  identity-migrator:
+    build:
+      context: .
+      dockerfile: src/identity-service/Identity.Migrator.Dockerfile
+    container_name: dollarshop-identity-migrator
+    environment:
+      IDENTITY_DB_CONNECTION: "postgresql://sales:sales@postgres:5432/identity_db"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ---- microservices --------------------------------------------------------
 
   sales-service:
     build:
@@ -74,21 +109,31 @@ services:
 
   catalog-service:
     build:
-      context: src/catalog-service
+      context: .
+      dockerfile: src/catalog-service/Catalog.Api/Dockerfile
     container_name: dollarshop-catalog
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__CatalogDb: "Host=postgres;Port=5432;Database=catalog_db;Username=sales;Password=sales"
     ports:
       - "5002:8080"
+    depends_on:
+      catalog-migrator:
+        condition: service_completed_successfully
 
   identity-service:
     build:
-      context: src/identity-service
+      context: .
+      dockerfile: src/identity-service/Identity.Api/Dockerfile
     container_name: dollarshop-identity
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__IdentityDb: "Host=postgres;Port=5432;Database=identity_db;Username=sales;Password=sales"
     ports:
       - "5001:8080"
+    depends_on:
+      identity-migrator:
+        condition: service_completed_successfully
 
   # finance-service is internal: the API Gateway never exposes it (§4.1).
   finance-service:

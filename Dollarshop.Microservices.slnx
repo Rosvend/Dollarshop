@@ -1,13 +1,19 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/catalog-service/">
-    <Project Path="src/catalog-service/Catalog.Api.csproj" />
+    <Project Path="src/catalog-service/Catalog.Api/Catalog.Api.csproj" />
+    <Project Path="src/catalog-service/Catalog.Application/Catalog.Application.csproj" />
+    <Project Path="src/catalog-service/Catalog.Domain/Catalog.Domain.csproj" />
+    <Project Path="src/catalog-service/Catalog.Infrastructure/Catalog.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/finance-service/">
     <Project Path="src/finance-service/Finance.Api.csproj" />
   </Folder>
   <Folder Name="/src/identity-service/">
-    <Project Path="src/identity-service/Identity.Api.csproj" />
+    <Project Path="src/identity-service/Identity.Api/Identity.Api.csproj" />
+    <Project Path="src/identity-service/Identity.Application/Identity.Application.csproj" />
+    <Project Path="src/identity-service/Identity.Domain/Identity.Domain.csproj" />
+    <Project Path="src/identity-service/Identity.Infrastructure/Identity.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/sales-service/">
     <Project Path="src/sales-service/Sales.Api/Sales.Api.csproj" />
