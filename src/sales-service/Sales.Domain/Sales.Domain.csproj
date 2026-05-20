@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sales.Domain — pure Domain layer of the sales-service (Core Domain).
+    ZERO-DEPENDENCY INVARIANT: this project must NOT contain any <PackageReference>
+    or <ProjectReference>. No EF Core, no ASP.NET, no RabbitMQ. Pure C# only.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sales.Domain</RootNamespace>
+    <AssemblyName>Sales.Domain</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>
