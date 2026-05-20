@@ -1,0 +1,106 @@
+# Dollarshop — runnable demo of the 4-microservice topology (Microservices §7.1).
+#
+# Boots: PostgreSQL + RabbitMQ + a one-shot DB migrator + the 4 microservices.
+# All services join the default project network and reach each other by service
+# name (e.g. `http://catalog-service:8080`, `amqp://rabbitmq:5672`).
+#
+#   docker compose up --build
+#
+# Host ports follow the architecture doc: identity 5001, catalog 5002, sales 5003.
+# finance-service is intentionally not exposed (§4.1): internal traffic only.
+
+services:
+
+  postgres:
+    image: postgres:17
+    container_name: dollarshop-postgres
+    environment:
+      POSTGRES_USER: sales
+      POSTGRES_PASSWORD: sales
+      POSTGRES_DB: sales_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sales -d sales_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: dollarshop-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # management UI: http://localhost:15672 (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  # One-shot job: emits an idempotent SQL script from the InitialCreate migration
+  # and applies it to postgres. Exits 0 on success; sales-service waits for it.
+  sales-migrator:
+    build:
+      context: .
+      dockerfile: src/sales-service/Sales.Migrator.Dockerfile
+    container_name: dollarshop-sales-migrator
+    environment:
+      SALES_DB_CONNECTION: "postgresql://sales:sales@postgres:5432/sales_db"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  sales-service:
+    build:
+      context: .
+      dockerfile: src/sales-service/Sales.Api/Dockerfile
+    container_name: dollarshop-sales
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__SalesDb: "Host=postgres;Port=5432;Database=sales_db;Username=sales;Password=sales"
+      RabbitMq__Host: rabbitmq
+      CatalogService__BaseUrl: "http://catalog-service:8080"
+    ports:
+      - "5003:8080"
+    depends_on:
+      sales-migrator:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+
+  catalog-service:
+    build:
+      context: src/catalog-service
+    container_name: dollarshop-catalog
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5002:8080"
+
+  identity-service:
+    build:
+      context: src/identity-service
+    container_name: dollarshop-identity
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5001:8080"
+
+  # finance-service is internal: the API Gateway never exposes it (§4.1).
+  finance-service:
+    build:
+      context: src/finance-service
+    container_name: dollarshop-finance
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      RabbitMq__Host: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
